@@ -3,6 +3,7 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
 import java.sql.*;
+import java.util.Optional;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
@@ -47,5 +48,32 @@ public class UserDaoTest {
         when(rs.next()).thenReturn(false);
         UserDao userDao = new UserDao(ds);
         assertThat(userDao.getLoginInfo(username)).isEmpty();
+    }
+
+    @Test
+    void getExistingUser() throws SQLException {
+        final String userId = "1";
+        final UserId id = UserId.of(userId);
+        final String username = "testuser";
+        final String realname = "bosse";
+        final User expectedUser = new User(id, username, realname);
+        when(ds.getConnection()).thenReturn(conn);
+        when(conn.createStatement()).thenReturn(stmt);
+        when(stmt.executeQuery(anyString())).thenReturn(rs);
+        when(rs.next()).thenReturn(true, false);
+        when(rs.getString("user")).thenReturn(username);
+        when(rs.getString("realname")).thenReturn(realname);
+        UserDao userDao = new UserDao(ds);
+        assertThat(userDao.get(userId)).isEqualTo(Optional.of(expectedUser));
+    }
+    @Test
+    void getNonExistingUser() throws SQLException {
+        final String username = "testuser";
+        when(ds.getConnection()).thenReturn(conn);
+        when(conn.createStatement()).thenReturn(stmt);
+        when(stmt.executeQuery(anyString())).thenReturn(rs);
+        when(rs.next()).thenReturn(false);
+        UserDao userDao = new UserDao(ds);
+        assertThat(userDao.get(username)).isEmpty();
     }
 }
