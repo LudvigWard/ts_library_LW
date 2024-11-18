@@ -19,15 +19,14 @@ public class UsernameTest {
      */
 
     @ParameterizedTest
-    @ValueSource(strings = {"bosse", "b osse", "   ", "@@-.", "bos", "abed", "userÅ", "こんにちは", "name😊", "a$b", "1234"})
-    @EmptySource
+    @ValueSource(strings = {"bosse", "@@-.", "abed", "1234"})
     void correctUsername(String name) {
         boolean result = Username.validate(name);
         assertThat(result).as("Expected valid username for input: '%s'", name).isTrue();
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"bosse", "b osse", "   ", "@@-.", "bos", "abed", "userÅ", "こんにちは", "name😊", "a$b", "1234"})
+    @ValueSource(strings = {"b osse", "   ", "bos", "userÅ", "こんにちは", "name😊", "a$b"})
     @EmptySource
     void incorrectUsername(String name) {
         boolean result = Username.validate(name);
