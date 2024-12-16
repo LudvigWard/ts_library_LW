@@ -24,14 +24,17 @@ public class UserDao {
     }
 
     public Optional<User> get(String id) {
-        try (Connection conn = ds.getConnection();
-                Statement stmt = conn.createStatement();
-                ResultSet rs = stmt
-                        .executeQuery("SELECT user, realname FROM user WHERE id = '" + id + "'")) {
-            if (rs.next()) {
-                String name = rs.getString("user");
-                String realname = rs.getString("realname");
-                return Optional.of(new User(UserId.of(id), name, realname));
+        String query = "SELECT user, realname FROM user WHERE id = ?";
+        try (Connection conn = ds.getConnection(); PreparedStatement pstmt = conn.prepareStatement(query)) {
+
+            pstmt.setString(1, id);
+
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    String name = rs.getString("user");
+                    String realname = rs.getString("realname");
+                    return Optional.of(new User(UserId.of(id), name, realname));
+                }
             }
         } catch (SQLException ex) {
             logger.error("Unable to fetch user " + id, ex);
@@ -40,16 +43,20 @@ public class UserDao {
         return Optional.empty();
     }
 
+
     public Optional<LoginInfo> getLoginInfo(String user) {
-        try (Connection conn = ds.getConnection();
-                Statement stmt = conn.createStatement();
-                ResultSet rs = stmt.executeQuery(
-                        "SELECT id, password_hash FROM user WHERE user = '" + user + "'")) {
-            if (rs.next()) {
-                int id = rs.getInt("id");
-                UserId userId = UserId.of(id);
-                String passwordHash = rs.getString("password_hash");
-                return Optional.of(new LoginInfo(userId, passwordHash));
+        String query = "SELECT id, password_hash FROM user WHERE user = ?";
+        try (Connection conn = ds.getConnection(); PreparedStatement pstmt = conn.prepareStatement(query)) {
+
+            pstmt.setString(1, user);
+
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    int id = rs.getInt("id");
+                    UserId userId = UserId.of(id);
+                    String passwordHash = rs.getString("password_hash");
+                    return Optional.of(new LoginInfo(userId, passwordHash));
+                }
             }
         } catch (SQLException ex) {
             logger.error("Unable to get user " + user, ex);
@@ -57,6 +64,7 @@ public class UserDao {
 
         return Optional.empty();
     }
+
 
     public boolean register(String name, String realname, String passwordHash) {
 
@@ -84,20 +92,21 @@ public class UserDao {
         }
     }
 
-    private boolean insertUserAndRole(String name, String realname, String passwordHash,
-            Connection conn) throws SQLException {
-        String insertUser = "INSERT INTO user (user, realname, password_hash) VALUES ('" + name
-                + "', '" + realname + "', '" + passwordHash + "')";
+    private boolean insertUserAndRole(String name, String realname, String passwordHash, Connection conn) throws SQLException {
+        String insertUser = "INSERT INTO user (user, realname, password_hash) VALUES (?, ?, ?)";
 
-        try (Statement stmt = conn.createStatement()) {
-            stmt.executeUpdate(insertUser, Statement.RETURN_GENERATED_KEYS);
-            UserId userId = getGeneratedUserId(stmt);
+        try (PreparedStatement pstmt = conn.prepareStatement(insertUser, Statement.RETURN_GENERATED_KEYS)) {
+            pstmt.setString(1, name);
+            pstmt.setString(2, realname);
+            pstmt.setString(3, passwordHash);
+
+            pstmt.executeUpdate();
+            UserId userId = getGeneratedUserId(pstmt);
 
             if (userId.getId() > 0 && addToUserRole(conn, userId)) {
                 conn.commit();
                 return true;
-            }
-            else {
+            } else {
                 conn.rollback();
                 return false;
             }
@@ -110,6 +119,7 @@ public class UserDao {
         }
     }
 
+
     private UserId getGeneratedUserId(Statement stmt) throws SQLException {
         try (ResultSet rs = stmt.getGeneratedKeys()) {
             rs.next();
@@ -118,10 +128,13 @@ public class UserDao {
     }
 
     private boolean addToUserRole(Connection conn, UserId user) throws SQLException {
-        String insertRole = "INSERT INTO user_role (user_id, role_id) VALUES (" + user + ", 2)";
+        String insertRole = "INSERT INTO user_role (user_id, role_id) VALUES (?, 2)";
 
-        try (Statement stmt = conn.createStatement()) {
-            return stmt.executeUpdate(insertRole) == 1;
+        try (PreparedStatement pstmt = conn.prepareStatement(insertRole)) {
+            pstmt.setInt(1, user.getId());
+
+            return pstmt.executeUpdate() == 1;
         }
     }
+
 }

@@ -79,6 +79,7 @@ public class BookDao {
         }
     }
 
+    // No reason to use PreparedStatement here, since no external data is added to the SQL query
     public List<BookLoan> overdueLoans() {
         String query = "SELECT bl.book_id, be.isbn, title, author, return_date, u.id AS user_id "
                 + "FROM book_loan AS bl JOIN book AS b ON bl.book_id = b.book_id "

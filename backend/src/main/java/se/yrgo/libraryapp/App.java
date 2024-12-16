@@ -1,5 +1,6 @@
 package se.yrgo.libraryapp;
 
+import org.pac4j.core.authorization.authorizer.Authorizer;
 import org.pac4j.core.authorization.authorizer.RequireAllRolesAuthorizer;
 import io.jooby.AccessLogHandler;
 import io.jooby.CorsHandler;
@@ -12,6 +13,7 @@ import io.jooby.hikari.HikariModule;
 import io.jooby.json.JacksonModule;
 import io.jooby.pac4j.Pac4jModule;
 import io.jooby.pac4j.Pac4jOptions;
+import org.pac4j.core.client.Client;
 import se.yrgo.libraryapp.auth.DbCookieClient;
 import se.yrgo.libraryapp.controllers.*;
 import se.yrgo.libraryapp.controllers.BookController;
@@ -54,18 +56,18 @@ public class App extends Jooby {
     // Having three modules seems less than ideal, but I can't find another way with jooby
 
     Pac4jModule module1 = new Pac4jModule(pac4jOptions);
-    module1.client("/*", DbCookieClient.class);
+    module1.client("/*", (Class<? extends Client>) DbCookieClient.class);
     install(module1);
 
     Pac4jModule module2 = new Pac4jModule(pac4jOptions);
     module2.client("/user/*",
-        new RequireAllRolesAuthorizer<>(Role.USER.toString()),
-        DbCookieClient.class);
+            (Authorizer) new RequireAllRolesAuthorizer<>(Role.USER.toString()),
+            (Class<? extends Client>) DbCookieClient.class);
     install(module2);
 
     Pac4jModule module3 = new Pac4jModule(pac4jOptions);
-    module3.client("/admin/*", new RequireAllRolesAuthorizer<>(Role.ADMIN.toString()),
-        DbCookieClient.class);
+    module3.client("/admin/*", (Authorizer) new RequireAllRolesAuthorizer<>(Role.ADMIN.toString()),
+            (Class<? extends Client>) DbCookieClient.class);
     install(module3);
 
     mvc(UserController.class);
